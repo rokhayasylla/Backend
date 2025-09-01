@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\DB;
 
 class CartService
 {
+    protected $orderService;
+    public function __construct(OrderService $orderService)
+    {
+        $this->orderService = $orderService;
+    }
     /**
      * Obtenir ou créer le panier de l'utilisateur connecté
      */
@@ -283,8 +288,7 @@ class CartService
             }
 
             // Utiliser OrderService pour créer la commande
-            $orderService = new \App\Services\OrderService();
-            $order = $orderService->createFromCart($orderData, $orderItems);
+            $order = $this->orderService->createFromCart($orderData, $orderItems);
 
             // Vider le panier après création de la commande réussie
             $cart->cartItems()->delete();
@@ -406,6 +410,6 @@ class CartService
         ];
     }
 
-    
+
 
 }

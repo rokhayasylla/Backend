@@ -4,13 +4,23 @@ namespace App\Services;
 
 use App\Http\Requests\OrderFormRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
+use App\Mail\OrderConfirmationMail;
 use App\Models\Order;
 use App\Models\Pack;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class OrderService
 {
+    protected $notificationService;
+    protected $invoiceService;
+
+    public function __construct(NotificationService $notificationService, InvoiceService $invoiceService)
+    {
+        $this->notificationService = $notificationService;
+        $this->invoiceService = $invoiceService;
+    }
     public function index()
     {
         return Order::with(['user', 'orderItems.product', 'orderItems.pack'])->latest()->get();
@@ -104,7 +114,10 @@ class OrderService
                 }
             }
 
-            return $order->load(['orderItems.product', 'orderItems.pack', 'user']);
+            $order->load(['orderItems.product', 'orderItems.pack', 'user']);
+            $this->notificationService->sendOrderConfirmation($order);
+
+            return $order;
         });
     }
 
@@ -113,16 +126,52 @@ class OrderService
         return Order::with(['user', 'orderItems.product', 'orderItems.pack', 'invoice'])->findOrFail($id);
     }
 
+//    public function updateStatus(UpdateOrderStatusRequest $request, string $id)
+//    {
+//        $order = Order::findOrFail($id);
+//        $order->update($request->validated());
+//
+//        if ($request->status === 'delivered') {
+//            $order->update(['delivered_at' => now()]);
+//            // Créer et envoyer la facture automatiquement
+//            $this->createAndSendInvoice($order);
+//        }
+//
+//        return $order->load(['user', 'orderItems.product', 'orderItems.pack']);
+//    }
+
     public function updateStatus(UpdateOrderStatusRequest $request, string $id)
     {
-        $order = Order::findOrFail($id);
-        $order->update($request->validated());
+        return DB::transaction(function () use ($request, $id) {
+            $order = Order::with(['user', 'orderItems.product', 'orderItems.pack'])->findOrFail($id);
+            $oldStatus = $order->status;
+            $newStatus = $request->status;
 
-        if ($request->status === 'delivered') {
-            $order->update(['delivered_at' => now()]);
-        }
+            $order->update($request->validated());
 
-        return $order->load(['user', 'orderItems.product', 'orderItems.pack']);
+            if ($newStatus === 'delivered') {
+                $order->update(['delivered_at' => now()]);
+
+                // Créer et envoyer la facture automatiquement
+                try {
+                    $invoice = $this->invoiceService->createInvoiceForOrder($order);
+                    $invoiceSent = $this->notificationService->sendInvoice($invoice);
+
+                    if ($invoiceSent) {
+                        \Log::info('✅ Facture envoyée avec succès pour commande #' . $order->order_number);
+                    } else {
+                        \Log::warning('⚠️ Échec envoi facture pour commande #' . $order->order_number);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('❌ Erreur lors de la création/envoi de facture: ' . $e->getMessage());
+                }
+            }
+
+            // Envoyer notification de changement de statut si nécessaire
+            $this->notificationService->sendOrderStatusUpdate($order, $oldStatus, $newStatus);
+
+            return $order->load(['user', 'orderItems.product', 'orderItems.pack']);
+        });
     }
 
     public function getUserOrders(string $userId)
@@ -183,7 +232,30 @@ class OrderService
                 }
             }
 
-            return $order->load(['orderItems.product', 'orderItems.pack', 'user']);
+            $order->load(['orderItems.product', 'orderItems.pack', 'user']);
+            // Envoyer l'email de confirmation de commande
+            $this->notificationService->sendOrderConfirmation($order);
+
+            return $order;
         });
+    }
+
+    /**
+     * Créer une facture et l'envoyer par email
+     */
+    private function createAndSendInvoice(Order $order)
+    {
+        try {
+            // Utiliser le service Invoice pour créer la facture
+            $invoiceService = new InvoiceService();
+            $invoice = $invoiceService->createInvoiceForOrder($order);
+
+            // Envoyer la facture par email
+            $invoiceService->sendInvoiceByEmail($invoice);
+
+        } catch (\Exception $e) {
+            // Log l'erreur mais ne pas faire échouer la mise à jour du statut
+            \Log::error('Erreur création/envoi facture pour commande ' . $order->id . ': ' . $e->getMessage());
+        }
     }
 }
