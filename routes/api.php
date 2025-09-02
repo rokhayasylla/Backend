@@ -17,13 +17,17 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
 */
 
+// Gérer toutes les requêtes OPTIONS pour CORS
+Route::options('{any}', function (Request $request) {
+    return response('', 200)
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+})->where('any', '.*');
+
+// Routes d'authentification (sans middleware auth)
 Route::group(['prefix' => 'auth'], function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
@@ -32,7 +36,7 @@ Route::group(['prefix' => 'auth'], function () {
     Route::get('me', [AuthController::class, 'me']);
 });
 
-
+// Routes protégées
 Route::middleware('auth:api')->group(function () {
 
     // Categories
@@ -73,13 +77,13 @@ Route::middleware('auth:api')->group(function () {
     Route::get('clients', [UserController::class, 'clients']);
 
     Route::group(['prefix' => 'cart'], function () {
-        Route::get('/', [CartController::class, 'index']);                    // Voir le panier
-        Route::get('/count', [CartController::class, 'count']);               // Nombre d'articles
-        Route::post('/add-product', [CartController::class, 'addProduct']);   // Ajouter produit
-        Route::post('/add-pack', [CartController::class, 'addPack']);         // Ajouter pack
-        Route::put('/items/{itemId}', [CartController::class, 'updateItem']); // Modifier quantité
-        Route::delete('/items/{itemId}', [CartController::class, 'removeItem']); // Supprimer item
-        Route::delete('/clear', [CartController::class, 'clear']);            // Vider panier
-        Route::post('/checkout', [CartController::class, 'convertToOrder']);  // Valider commande
+        Route::get('/', [CartController::class, 'index']);
+        Route::get('/count', [CartController::class, 'count']);
+        Route::post('/add-product', [CartController::class, 'addProduct']);
+        Route::post('/add-pack', [CartController::class, 'addPack']);
+        Route::put('/items/{itemId}', [CartController::class, 'updateItem']);
+        Route::delete('/items/{itemId}', [CartController::class, 'removeItem']);
+        Route::delete('/clear', [CartController::class, 'clear']);
+        Route::post('/checkout', [CartController::class, 'convertToOrder']);
     });
 });
