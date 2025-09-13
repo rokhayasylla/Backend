@@ -6,6 +6,8 @@ use App\Mail\InvoiceMail;
 use App\Models\Invoice;
 use App\Models\Order;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class InvoiceService
 {
@@ -23,9 +25,8 @@ class InvoiceService
             'amount' => $order->total_amount
         ]);
 
-        // Here you would generate PDF and save path
-        // $pdfPath = $this->generateInvoicePDF($invoice);
-        // $invoice->update(['pdf_path' => $pdfPath]);
+        // Générer automatiquement le PDF
+        $this->generateInvoicePDF($invoice);
 
         return $invoice->load('order.user');
     }
@@ -38,13 +39,6 @@ class InvoiceService
     public function sendByEmail(string $id)
     {
         $invoice = $this->show($id);
-
-        // Here you would implement email sending logic
-        // Mail::to($invoice->order->user->email)->send(new InvoiceMail($invoice));
-
-//        $invoice->update(['sent_by_email' => true]);
-
-        //return $invoice;
         return $this->sendInvoiceByEmail($invoice);
     }
 
@@ -72,7 +66,7 @@ class InvoiceService
             'amount' => $order->total_amount
         ]);
 
-        // Générer le PDF (optionnel)
+        // Générer le PDF
         $this->generateInvoicePDF($invoice);
 
         return $invoice->load('order.user');
@@ -89,6 +83,9 @@ class InvoiceService
                 $invoice->load(['order.user', 'order.orderItems.product', 'order.orderItems.pack']);
             }
 
+            // S'assurer que le PDF existe
+            $this->generateOrGetPDF($invoice);
+
             // Envoyer l'email
             Mail::to($invoice->order->user->email)->send(new InvoiceMail($invoice));
 
@@ -104,25 +101,93 @@ class InvoiceService
     }
 
     /**
-     * Générer le PDF de la facture (optionnel)
-     * Vous pouvez utiliser une bibliothèque comme DomPDF ou mPDF
+     * Générer ou récupérer le PDF d'une facture
      */
-    private function generateInvoicePDF(Invoice $invoice)
+    public function generateOrGetPDF(Invoice $invoice)
+    {
+        // Si le PDF existe déjà, le retourner
+        if ($invoice->pdf_path && Storage::exists($invoice->pdf_path)) {
+            return $invoice->pdf_path;
+        }
+
+        // Sinon le générer
+        return $this->generateInvoicePDF($invoice);
+    }
+
+    /**
+     * Générer le PDF de la facture
+     */
+    public function generateInvoicePDF(Invoice $invoice, $forceRegenerate = false)
     {
         try {
-            // Exemple avec DomPDF (vous devez installer le package)
-            // $pdf = PDF::loadView('pdf.invoice', compact('invoice'));
-            // $filename = 'invoices/' . $invoice->invoice_number . '.pdf';
-            // Storage::put($filename, $pdf->output());
-            // $invoice->update(['pdf_path' => $filename]);
+            // Si le PDF existe et qu'on ne force pas la régénération
+            if (!$forceRegenerate && $invoice->pdf_path && Storage::exists($invoice->pdf_path)) {
+                return $invoice->pdf_path;
+            }
 
-            // Pour l'instant, on simule juste le chemin
+            // Charger les relations nécessaires
+            if (!$invoice->relationLoaded('order')) {
+                $invoice->load(['order.user', 'order.orderItems.product', 'order.orderItems.pack']);
+            }
+
+            // Générer le PDF avec DomPDF
+            $pdf = Pdf::loadView('emails.pdf', [
+                'invoice' => $invoice,
+                'order' => $invoice->order,
+                'user' => $invoice->order->user
+            ]);
+            // Configuration du PDF
+            $pdf->setPaper('A4', 'portrait');
+            $pdf->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isPhpEnabled' => true,
+                'isRemoteEnabled' => true,
+            ]);
+
+            // Nom du fichier
             $filename = 'invoices/' . $invoice->invoice_number . '.pdf';
+
+            // Sauvegarder le PDF
+            Storage::put($filename, $pdf->output());
+
+            // Mettre à jour le modèle avec le chemin
             $invoice->update(['pdf_path' => $filename]);
+
+            return $filename;
 
         } catch (\Exception $e) {
             \Log::error('Erreur génération PDF facture: ' . $e->getMessage());
-            // Ne pas faire échouer si la génération PDF échoue
+            throw new \Exception('Erreur lors de la génération du PDF: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Supprimer le PDF d'une facture
+     */
+    public function deletePDF(Invoice $invoice)
+    {
+        if ($invoice->pdf_path && Storage::exists($invoice->pdf_path)) {
+            Storage::delete($invoice->pdf_path);
+            $invoice->update(['pdf_path' => null]);
+        }
+    }
+
+    /**
+     * Obtenir la taille du fichier PDF
+     */
+    public function getPDFSize(Invoice $invoice)
+    {
+        if ($invoice->pdf_path && Storage::exists($invoice->pdf_path)) {
+            return Storage::size($invoice->pdf_path);
+        }
+        return 0;
+    }
+
+    /**
+     * Vérifier si le PDF existe
+     */
+    public function pdfExists(Invoice $invoice)
+    {
+        return $invoice->pdf_path && Storage::exists($invoice->pdf_path);
     }
 }

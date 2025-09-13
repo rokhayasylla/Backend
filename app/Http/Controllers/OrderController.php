@@ -6,6 +6,8 @@ use App\Http\Requests\OrderFormRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
+use App\Mail\OrderConfirmationMail;
+use Illuminate\Support\Facades\Mail;
 
 class OrderController extends Controller
 {
@@ -54,5 +56,62 @@ class OrderController extends Controller
     {
         $orders = $this->orderService->getOrdersByStatus($status);
         return response()->json($orders, 200);
+    }
+    /**
+     * Envoie un email de notification de début de livraison
+     */
+    public function sendDeliveryNotification(string $id)
+    {
+        try {
+            // Récupérer la commande via le service
+            $order = $this->orderService->show($id);
+
+            // Vérifier que la commande est bien en livraison
+            if ($order->status !== 'delivering') {
+                return response()->json([
+                    'error' => 'La commande doit être en statut "delivering" pour envoyer cette notification'
+                ], 400);
+            }
+
+            // Envoyer l'email
+            Mail::to($order->user->email)->send(new OrderConfirmationMail($order));
+
+            return response()->json([
+                'message' => 'Email de notification de livraison envoyé avec succès',
+                'order_number' => $order->order_number,
+                'recipient' => $order->user->email
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Erreur lors de l\'envoi de l\'email',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    /**
+     * Envoie un email de confirmation de commande
+     */
+    public function sendConfirmationEmail(string $id)
+    {
+        try {
+            // Récupérer la commande via le service
+            $order = $this->orderService->show($id);
+
+            // Envoyer l'email de confirmation
+            Mail::to($order->user->email)->send(new OrderConfirmationMail($order));
+
+            return response()->json([
+                'message' => 'Email de confirmation envoyé avec succès',
+                'order_number' => $order->order_number,
+                'recipient' => $order->user->email
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Erreur lors de l\'envoi de l\'email de confirmation',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

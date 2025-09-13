@@ -55,11 +55,19 @@ Route::middleware('auth:api')->group(function () {
     Route::patch('orders/{id}/status', [OrderController::class, 'updateStatus']);
     Route::get('my-orders', [OrderController::class, 'myOrders']);
     Route::get('orders/status/{status}', [OrderController::class, 'byStatus']);
+    Route::post('orders/{id}/send-delivery-notification', [OrderController::class, 'sendDeliveryNotification']);
+    Route::post('orders/{id}/send-confirmation-email', [OrderController::class, 'sendConfirmationEmail']);
 
     // Invoices
     Route::apiResource('invoices', InvoiceController::class)->only(['index', 'store', 'show']);
     Route::post('invoices/{id}/send-email', [InvoiceController::class, 'sendEmail']);
     Route::get('my-invoices', [InvoiceController::class, 'myInvoices']);
+
+    Route::get('/invoices/{id}/download', [InvoiceController::class, 'download']);
+    Route::get('/invoices/{id}/preview', [InvoiceController::class, 'preview']);
+
+    // Route admin pour générer manuellement le PDF
+    Route::post('/invoices/{id}/generate-pdf', [InvoiceController::class, 'generatePDF']);
 
     // Chat Messages
     Route::apiResource('chat-messages', ChatMessageController::class)->only(['index', 'store']);
@@ -86,4 +94,23 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/clear', [CartController::class, 'clear']);
         Route::post('/checkout', [CartController::class, 'convertToOrder']);
     });
+
+    // Routes principales
+    Route::apiResource('chat-messages', ChatMessageController::class)->only(['index', 'store']);
+    Route::patch('chat-messages/{id}/read', [ChatMessageController::class, 'markAsRead']);
+
+    // Routes pour les clients
+    Route::get('my-messages', [ChatMessageController::class, 'myMessages']);
+    Route::get('unread-messages', [ChatMessageController::class, 'unread']);
+
+    // Routes pour le support
+    Route::get('chat-conversations', [ChatMessageController::class, 'getAllConversations']);
+    Route::get('chat-user-messages/{userId}', [ChatMessageController::class, 'getUserMessages']);
+    Route::patch('chat-messages/read-user/{userId}', [ChatMessageController::class, 'markUserMessagesAsRead']);
+    Route::patch('chat-messages/mark-all-read', [ChatMessageController::class, 'markAllMyMessagesAsRead']);
+
+
+
+    Route::get('chat-conversations', [ChatMessageController::class, 'getAllConversations']);
+    Route::get('chat-user-messages/{userId}', [ChatMessageController::class, 'getUserMessages']);
 });

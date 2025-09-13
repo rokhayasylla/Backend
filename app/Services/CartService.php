@@ -113,19 +113,35 @@ class CartService
     /**
      * Ajouter un pack au panier
      */
+    /**
+     * Ajouter un pack au panier
+     */
     public function addPack(array $data)
     {
+        // Validation manuelle de sécurité (au cas où le contrôleur ne le fait pas)
+        if (!isset($data['pack_id'], $data['quantity']) || $data['quantity'] < 1) {
+            throw new \InvalidArgumentException("Paramètres invalides : pack_id et quantity sont requis.");
+        }
+
         $packId = $data['pack_id'];
-        $quantity = $data['quantity'];
+        $quantity = (int) $data['quantity'];
 
         // Vérifier si le pack existe et est actif
-        $pack = Pack::where('is_active', true)->with('products')->findOrFail($packId);
+        $pack = Pack::where('is_active', true)
+            ->with(['products' => function ($query) {
+                $query->select('products.id', 'products.name', 'products.stock_quantity', 'products.price')
+                    ->withPivot('quantity');
+            }])
+            ->findOrFail($packId);
 
         // Vérifier le stock des produits du pack
         foreach ($pack->products as $product) {
             $requiredQuantity = $product->pivot->quantity * $quantity;
             if ($product->stock_quantity < $requiredQuantity) {
-                throw new \Exception("Stock insuffisant pour le produit '{$product->name}' dans le pack '{$pack->name}'. Stock disponible: {$product->stock_quantity}, Requis: {$requiredQuantity}");
+                throw new \RuntimeException(
+                    "Stock insuffisant pour le produit '{$product->name}' dans le pack '{$pack->name}'. " .
+                    "Requis: {$requiredQuantity}, Disponible: {$product->stock_quantity}"
+                );
             }
         }
 
@@ -139,12 +155,15 @@ class CartService
             ->first();
 
         if ($existingItem) {
-            // Re-vérifier le stock avec la nouvelle quantité totale
+            // Vérifier à nouveau le stock avec la quantité totale
             $totalQuantity = $existingItem->quantity + $quantity;
             foreach ($pack->products as $product) {
                 $requiredQuantity = $product->pivot->quantity * $totalQuantity;
                 if ($product->stock_quantity < $requiredQuantity) {
-                    throw new \Exception("Stock insuffisant pour le produit '{$product->name}' dans le pack '{$pack->name}'. Quantité de pack déjà dans le panier: {$existingItem->quantity}");
+                    throw new \RuntimeException(
+                        "Impossible d'ajouter plus de packs. " .
+                        "Stock insuffisant pour '{$product->name}' (déjà {$existingItem->quantity} packs dans le panier)."
+                    );
                 }
             }
 
@@ -161,6 +180,7 @@ class CartService
 
         return $this->getUserCart();
     }
+
 
     /**
      * Mettre à jour la quantité d'un item du panier

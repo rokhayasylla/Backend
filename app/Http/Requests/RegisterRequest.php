@@ -27,7 +27,7 @@ class RegisterRequest extends FormRequest
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:500',
-            'role' => 'nullable|in:client'
+            'role' => 'nullable|in:client,admin,employee'
         ];
     }
 }

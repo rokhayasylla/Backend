@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ChatMessageRequest;
+use App\Models\ChatMessage;
 use App\Services\ChatMessageService;
 use Illuminate\Http\Request;
 
@@ -42,6 +43,35 @@ class ChatMessageController extends Controller
     public function unread()
     {
         $messages = $this->chatMessageService->getUnreadMessages();
+        $count = $messages->count();
+
+        return response()->json([
+            'count' => $count,
+            'messages' => $messages
+        ], 200);
+    }
+
+    // ========== NOUVELLES MÉTHODES À AJOUTER ==========
+
+    public function getAllConversations()
+    {
+        $conversations = $this->chatMessageService->getAllConversations();
+        return response()->json($conversations, 200);
+    }
+
+    public function getUserMessages($userId)
+    {
+        $messages = $this->chatMessageService->getUserMessages($userId);
         return response()->json($messages, 200);
     }
+
+    public function markUserMessagesAsRead($userId)
+    {
+        ChatMessage::where('user_id', $userId)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json(['message' => 'Messages marked as read']);
+    }
+
 }
