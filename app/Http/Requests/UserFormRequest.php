@@ -25,7 +25,7 @@ class UserFormRequest extends FormRequest
             'full_name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:500',
-            'role' => 'required|in:admin,employee,client',
+            'role' => 'required|in:admin,employee,client,livreur',
             'is_active' => 'boolean'
         ];
 

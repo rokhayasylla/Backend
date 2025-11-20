@@ -13,14 +13,26 @@ class ChatMessageService
         return ChatMessage::with('user')->latest()->get();
     }
 
+    // ✅ CORRECTION PRINCIPALE ICI
     public function store(ChatMessageRequest $request)
     {
         $data = $request->validated();
-        $data['user_id'] = auth()->id();
-
-        // Déterminer le sender_type selon le rôle de l'utilisateur
         $user = auth()->user();
-        $data['sender_type'] = $user->role === 'client' ? 'client' : 'support';
+
+        // ✅ CORRECTION : Gérer différemment client et support
+        if ($user->role === 'client') {
+            // Pour un client : user_id = ID du client lui-même
+            $data['user_id'] = $user->id;
+            $data['sender_type'] = 'client';
+        } else {
+            // Pour le support : user_id = ID du client destinataire (fourni dans la requête)
+            // ✅ NE PAS écraser le user_id fourni dans la requête
+            if (!isset($data['user_id'])) {
+                throw new \Exception('Le user_id du destinataire est requis pour les messages de support');
+            }
+            $data['sender_type'] = 'support';
+        }
+
         $data['is_read'] = false;
 
         $message = ChatMessage::create($data);
@@ -31,7 +43,7 @@ class ChatMessageService
     {
         return ChatMessage::where('user_id', $userId)
             ->with('user')
-            ->orderBy('created_at', 'asc') // Changer de latest() à orderBy pour chronologie
+            ->orderBy('created_at', 'asc')
             ->get();
     }
 
@@ -61,8 +73,6 @@ class ChatMessageService
             ->latest()
             ->get();
     }
-
-    // ========== NOUVELLES MÉTHODES ==========
 
     public function getAllConversations()
     {

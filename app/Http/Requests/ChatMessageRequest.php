@@ -13,6 +13,7 @@ class ChatMessageRequest extends FormRequest
 
     public function rules(): array
     {
+        $user = auth()->user();
         return [
             'message' => [
                 'required',
@@ -21,7 +22,9 @@ class ChatMessageRequest extends FormRequest
                 'min:1'
             ],
             // Ajouter ces règles pour le support
-            'user_id' => 'nullable|integer|exists:users,id',
+            'user_id' => $user->role === 'client'
+                ? 'prohibited'
+                : 'required|integer|exists:users,id',
             'sender_type' => 'nullable|in:client,support'
         ];
     }

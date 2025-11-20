@@ -11,7 +11,7 @@ class UpdateOrderStatusRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isEmployee());
+        return auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isEmployee() || auth()->user()->isLivreur());
     }
 
     /**

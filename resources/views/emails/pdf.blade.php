@@ -159,11 +159,11 @@
 <body>
 <div class="header">
     <div class="company-info">
-        <div class="company-name">{{ config('Boulangerie') }}</div>
-        <div>123 Rue de la Boulangerie</div>
+        <div class="company-name">{{ config('RSTrading') }}</div>
+        <div>123 Rue Penitence</div>
         <div>75001 Dakar, Senegal</div>
         <div>Tél: +221 78 287 69 51 </div>
-        <div>Email: contact@boulangerie.fr</div>
+        <div>Email: RSTrading@gmail.com</div>
     </div>
 
     <div class="invoice-title">Facture</div>
@@ -230,8 +230,8 @@
                     @endif
                 </td>
                 <td class="text-center">{{ $item->quantity }}</td>
-                <td class="text-right">{{ number_format($item->unit_price, 2) }} €</td>
-                <td class="text-right font-bold">{{ number_format($item->total_price, 2) }} €</td>
+                <td class="text-right">{{ number_format($item->unit_price, 2) }} fcfa</td>
+                <td class="text-right font-bold">{{ number_format($item->total_price, 2) }} fcfa</td>
             </tr>
         @endforeach
         </tbody>
@@ -240,23 +240,23 @@
 
 <div class="total-section">
     <div class="total-row">
-        <strong>Sous-total : {{ number_format($order->orderItems->sum('total_price'), 2) }} €</strong>
+        <strong>Sous-total : {{ number_format($order->orderItems->sum('total_price'), 2) }} fcfa</strong>
     </div>
 
     @if($order->delivery_fee > 0)
         <div class="total-row">
-            Frais de livraison : {{ number_format($order->delivery_fee, 2) }} €
+            Frais de livraison : {{ number_format($order->delivery_fee, 2) }} fcfa
         </div>
     @endif
 
     @if($order->discount_amount > 0)
         <div class="total-row text-green">
-            Réduction : -{{ number_format($order->discount_amount, 2) }} €
+            Réduction : -{{ number_format($order->discount_amount, 2) }} fcfa
         </div>
     @endif
 
     <div class="total-final">
-        TOTAL : {{ number_format($invoice->amount, 2) }} €
+        TOTAL : {{ number_format($invoice->amount, 2) }} fcfa
     </div>
 </div>
 

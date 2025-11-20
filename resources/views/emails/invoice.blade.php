@@ -83,7 +83,7 @@
         <p><strong>Date de facturation:</strong> {{ $invoice->created_at->format('d/m/Y à H:i') }}</p>
         <p><strong>Commande:</strong> {{ $order->order_number }}</p>
         <p><strong>Date de livraison:</strong> {{ $order->delivered_at->format('d/m/Y à H:i') }}</p>
-        <p><strong>Montant:</strong> <strong style="color: #007bff; font-size: 1.2em;">{{ number_format($invoice->amount, 2) }} €</strong></p>
+        <p><strong>Montant:</strong> <strong style="color: #007bff; font-size: 1.2em;">{{ number_format($invoice->amount, 2) }} fcfa</strong></p>
     </div>
 
     <div class="invoice-details">

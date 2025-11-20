@@ -54,4 +54,8 @@ class UserService
     {
         return User::where('role', 'client')->where('is_active', true)->get();
     }
+    public function getLivreurs()
+    {
+        return User::where('role', 'livreur')->where('is_active', true)->get();
+    }
 }

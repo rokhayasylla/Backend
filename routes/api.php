@@ -58,6 +58,11 @@ Route::middleware('auth:api')->group(function () {
     Route::post('orders/{id}/send-delivery-notification', [OrderController::class, 'sendDeliveryNotification']);
     Route::post('orders/{id}/send-confirmation-email', [OrderController::class, 'sendConfirmationEmail']);
 
+
+    // ✅ Routes pour l'assignation de livreurs
+    Route::post('orders/{id}/assign-livreur', [OrderController::class, 'assignLivreur']);
+    Route::get('orders/livreur/{livreurId}', [OrderController::class, 'getLivreurOrders']);
+
     // Invoices
     Route::apiResource('invoices', InvoiceController::class)->only(['index', 'store', 'show']);
     Route::post('invoices/{id}/send-email', [InvoiceController::class, 'sendEmail']);
@@ -83,6 +88,7 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('users', UserController::class);
     Route::get('employees', [UserController::class, 'employees']);
     Route::get('clients', [UserController::class, 'clients']);
+    Route::get('livreurs', [UserController::class, 'livreurs']);
 
     Route::group(['prefix' => 'cart'], function () {
         Route::get('/', [CartController::class, 'index']);
@@ -113,4 +119,7 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('chat-conversations', [ChatMessageController::class, 'getAllConversations']);
     Route::get('chat-user-messages/{userId}', [ChatMessageController::class, 'getUserMessages']);
+
+    Route::post('orders/{id}/mark-payment-received', [OrderController::class, 'markPaymentReceived']);
+
 });

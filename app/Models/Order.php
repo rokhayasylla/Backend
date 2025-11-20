@@ -48,4 +48,12 @@ class Order extends Model
             $order->order_number = 'CMD-' . $date . '-' . str_pad($sequence, 5, '0', STR_PAD_LEFT);
         });
     }
+
+    public function livreur()
+    {
+        return $this->belongsTo(User::class, 'livreur_id');
+    }
+
+
+
 }

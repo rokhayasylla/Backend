@@ -21,9 +21,10 @@ class OrderService
         $this->notificationService = $notificationService;
         $this->invoiceService = $invoiceService;
     }
+
     public function index()
     {
-        return Order::with(['user', 'orderItems.product', 'orderItems.pack'])->latest()->get();
+        return Order::with(['user', 'livreur', 'orderItems.product', 'orderItems.pack'])->latest()->get();
     }
 
     public function store($request)
@@ -114,45 +115,38 @@ class OrderService
                 }
             }
 
-            $order->load(['orderItems.product', 'orderItems.pack', 'user']);
+            //  AJOUTER 'livreur' ici aussi
+            $order->load(['orderItems.product', 'orderItems.pack', 'user', 'livreur']);
             $this->notificationService->sendOrderConfirmation($order);
 
             return $order;
         });
     }
 
+
     public function show(string $id)
     {
-        return Order::with(['user', 'orderItems.product', 'orderItems.pack', 'invoice'])->findOrFail($id);
+        return Order::with(['user', 'livreur', 'orderItems.product', 'orderItems.pack', 'invoice'])->findOrFail($id);
     }
 
-//    public function updateStatus(UpdateOrderStatusRequest $request, string $id)
-//    {
-//        $order = Order::findOrFail($id);
-//        $order->update($request->validated());
-//
-//        if ($request->status === 'delivered') {
-//            $order->update(['delivered_at' => now()]);
-//            // Créer et envoyer la facture automatiquement
-//            $this->createAndSendInvoice($order);
-//        }
-//
-//        return $order->load(['user', 'orderItems.product', 'orderItems.pack']);
-//    }
-
+    // CORRECTION ICI - Ajouter 'livreur'
     public function updateStatus(UpdateOrderStatusRequest $request, string $id)
     {
         return DB::transaction(function () use ($request, $id) {
-            $order = Order::with(['user', 'orderItems.product', 'orderItems.pack'])->findOrFail($id);
+            $order = Order::with(['user', 'livreur', 'orderItems.product', 'orderItems.pack'])->findOrFail($id);
             $oldStatus = $order->status;
             $newStatus = $request->status;
 
             $order->update($request->validated());
 
+            // ✅ UNIQUEMENT quand l'EMPLOYÉ marque comme livrée
             if ($newStatus === 'delivered') {
-                $order->update(['delivered_at' => now()]);
+                $order->update([
+                    'delivered_at' => now()
+                    // ✅ NE PAS CHANGER payment_status ici, il est déjà à "paid" si le livreur l'a fait
+                ]);
 
-                // Créer et envoyer la facture automatiquement
+                // ✅ Créer et envoyer la facture
                 try {
                     $invoice = $this->invoiceService->createInvoiceForOrder($order);
                     $invoiceSent = $this->notificationService->sendInvoice($invoice);
@@ -167,25 +161,26 @@ class OrderService
                 }
             }
 
-            // Envoyer notification de changement de statut si nécessaire
             $this->notificationService->sendOrderStatusUpdate($order, $oldStatus, $newStatus);
 
-            return $order->load(['user', 'orderItems.product', 'orderItems.pack']);
+            return $order->load(['user', 'livreur', 'orderItems.product', 'orderItems.pack']);
         });
     }
+
 
     public function getUserOrders(string $userId)
     {
         return Order::where('user_id', $userId)
-            ->with(['orderItems.product', 'orderItems.pack'])
+            ->with(['livreur', 'orderItems.product', 'orderItems.pack'])
             ->latest()
             ->get();
     }
 
+
     public function getOrdersByStatus(string $status)
     {
         return Order::where('status', $status)
-            ->with(['user', 'orderItems.product', 'orderItems.pack'])
+            ->with(['user', 'livreur', 'orderItems.product', 'orderItems.pack'])
             ->latest()
             ->get();
     }
@@ -232,7 +227,8 @@ class OrderService
                 }
             }
 
-            $order->load(['orderItems.product', 'orderItems.pack', 'user']);
+            // ✅ AJOUTER 'livreur'
+            $order->load(['orderItems.product', 'orderItems.pack', 'user', 'livreur']);
             // Envoyer l'email de confirmation de commande
             $this->notificationService->sendOrderConfirmation($order);
 

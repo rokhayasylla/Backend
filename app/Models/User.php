@@ -76,6 +76,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->role === 'client';
     }
 
+    public function isLivreur()
+    {
+        return $this->role === 'livreur';
+    }
+
     public function cart()
     {
         return $this->hasOne(Cart::class);

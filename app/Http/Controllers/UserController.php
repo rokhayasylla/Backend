@@ -57,4 +57,9 @@ class UserController extends Controller
         return response()->json($clients, 200);
     }
 
+    public function livreurs()
+    {
+        $livreurs = $this->userService->getLivreurs();
+        return response()->json($livreurs, 200);
+    }
 }

@@ -99,10 +99,10 @@
                 <div>
                     <strong>{{ $item->item_name }}</strong>
                     <br>
-                    <small>Quantité: {{ $item->quantity }} × {{ number_format($item->unit_price, 2) }} €</small>
+                    <small>Quantité: {{ $item->quantity }} × {{ number_format($item->unit_price, 2) }} fcfa</small>
                 </div>
                 <div>
-                    <strong>{{ number_format($item->total_price, 2) }} €</strong>
+                    <strong>{{ number_format($item->total_price, 2) }} fcfa</strong>
                 </div>
             </div>
         @endforeach
@@ -110,12 +110,12 @@
         @if($order->discount_amount > 0)
             <div class="item" style="color: #28a745;">
                 <div><strong>Remise</strong></div>
-                <div><strong>-{{ number_format($order->discount_amount, 2) }} €</strong></div>
+                <div><strong>-{{ number_format($order->discount_amount, 2) }} fcfa</strong></div>
             </div>
         @endif
 
         <div class="total">
-            Total: {{ number_format($order->total_amount, 2) }} €
+            Total: {{ number_format($order->total_amount, 2) }} fcfa
         </div>
     </div>
 

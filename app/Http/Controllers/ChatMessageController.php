@@ -74,4 +74,18 @@ class ChatMessageController extends Controller
         return response()->json(['message' => 'Messages marked as read']);
     }
 
+    public function markAllMyMessagesAsRead(){
+    $user = auth()->user();
+
+    if ($user->role === 'client') {
+        // Pour les clients : marquer les messages du support comme lus
+        ChatMessage::where('user_id', $user->id)
+            ->where('sender_type', 'support')
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+    }
+
+    return response()->json(['message' => 'Tous les messages ont été marqués comme lus']);
+}
+
 }
