@@ -42,8 +42,8 @@ class Product extends Model
     // Accesseurs
     public function getImageUrlAttribute()
     {
-        if ($this->image && Storage::disk('images')->exists($this->image)) {
-            return Storage::disk('images')->url($this->image);
+        if ($this->image && Storage::disk('public')->exists($this->image)) {
+            return Storage::disk('public')->url($this->image);
         }
         return null;
     }
@@ -56,7 +56,7 @@ class Product extends Model
         // Supprimer l'image lors de la suppression du produit
         static::deleting(function ($product) {
             if ($product->image) {
-                Storage::disk('images')->delete($product->image);
+                Storage::disk('public')->delete($product->image);
             }
         });
     }
