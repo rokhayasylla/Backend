@@ -15,11 +15,11 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'storage/*', 'sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:4200','https://memoire-frontend-nu.vercel.app'],
+    'allowed_origins' => ['http://localhost:4200', 'https://memoire-frontend-nu.vercel.app'],
 
     'allowed_origins_patterns' => [],
 
