@@ -9,9 +9,38 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductService
 {
+    /**
+     * ✅ Méthode helper pour formater un produit avec l'URL complète de l'image
+     */
+    private function formatProduct($product)
+    {
+        $productArray = $product->toArray();
+
+        // Ajouter l'URL complète de l'image
+        if ($product->image) {
+            $productArray['imageUrl'] = asset('storage/images/' . $product->image);
+        } else {
+            $productArray['imageUrl'] = null;
+        }
+
+        return $productArray;
+    }
+
+    /**
+     * ✅ Formater une collection de produits
+     */
+    private function formatProducts($products)
+    {
+        return $products->map(function($product) {
+            return $this->formatProduct($product);
+        });
+    }
+
     public function index()
     {
-        return Product::with(['category', 'promotions'])->get();
+        $products = Product::with(['category', 'promotions'])->get();
+        // ✅ Retourner les produits formatés avec imageUrl
+        return $this->formatProducts($products);
     }
 
     public function store(ProductFormRequest $request)
@@ -23,12 +52,16 @@ class ProductService
             $data['image'] = $this->storeImage($request->file('image'));
         }
 
-        return Product::create($data);
+        $product = Product::create($data);
+        // ✅ Retourner le produit formaté avec imageUrl
+        return $this->formatProduct($product->load(['category', 'promotions']));
     }
 
     public function show(string $id)
     {
-        return Product::with(['category', 'promotions', 'packs'])->findOrFail($id);
+        $product = Product::with(['category', 'promotions', 'packs'])->findOrFail($id);
+        // ✅ Retourner le produit formaté avec imageUrl
+        return $this->formatProduct($product);
     }
 
     public function update(array $request, string $id)
@@ -60,12 +93,20 @@ class ProductService
         }
 
         $product->update($request);
-        return $product->fresh(['category', 'promotions']);
+        $updatedProduct = $product->fresh(['category', 'promotions']);
+        // ✅ Retourner le produit formaté avec imageUrl
+        return $this->formatProduct($updatedProduct);
     }
 
     public function destroy(string $id)
     {
         $product = Product::findOrFail($id);
+
+        // ✅ Supprimer l'image avant de supprimer le produit
+        if ($product->image) {
+            Storage::disk('images')->delete($product->image);
+        }
+
         $product->delete();
     }
 
@@ -93,13 +134,16 @@ class ProductService
 
     public function getProductsByCategory(string $categoryId)
     {
-        return Product::where('category_id', $categoryId)->get();
+        $products = Product::where('category_id', $categoryId)->get();
+        // ✅ Retourner les produits formatés avec imageUrl
+        return $this->formatProducts($products);
     }
 
     public function updateStock(string $productId, int $quantity)
     {
         $product = Product::findOrFail($productId);
         $product->decrement('stock_quantity', $quantity);
-        return $product;
+        // ✅ Retourner le produit formaté avec imageUrl
+        return $this->formatProduct($product->fresh());
     }
 }
