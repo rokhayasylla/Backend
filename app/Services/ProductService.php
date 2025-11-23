@@ -18,8 +18,14 @@ class ProductService
 
         // Ajouter l'URL complète de l'image
         if ($product->image) {
-            // Utiliser Storage::url() pour obtenir l'URL publique
-            $productArray['imageUrl'] = Storage::disk('public')->url($product->image);
+            // Si l'image ne commence pas par "images/", l'ajouter (pour les anciennes images)
+            $imagePath = $product->image;
+            if (!str_starts_with($imagePath, 'images/')) {
+                $imagePath = 'images/' . $imagePath;
+            }
+
+            // Construire l'URL complète
+            $productArray['imageUrl'] = url('storage/' . $imagePath);
         } else {
             $productArray['imageUrl'] = null;
         }
@@ -70,7 +76,12 @@ class ProductService
         if (isset($request['image']) && $request['image'] instanceof UploadedFile) {
             // Supprimer l'ancienne image si elle existe
             if ($product->image) {
-                Storage::disk('public')->delete($product->image);
+                // Gérer le cas où l'ancienne image n'a pas le préfixe "images/"
+                $oldImagePath = $product->image;
+                if (!str_starts_with($oldImagePath, 'images/')) {
+                    $oldImagePath = 'images/' . $oldImagePath;
+                }
+                Storage::disk('public')->delete($oldImagePath);
             }
 
             // Stocker la nouvelle image
@@ -78,7 +89,11 @@ class ProductService
         } elseif (isset($request['image'])) {
             // Si 'image' est présent mais pas un fichier
             if (is_null($request['image']) && $product->image) {
-                Storage::disk('public')->delete($product->image);
+                $imagePath = $product->image;
+                if (!str_starts_with($imagePath, 'images/')) {
+                    $imagePath = 'images/' . $imagePath;
+                }
+                Storage::disk('public')->delete($imagePath);
                 $request['image'] = null;
             } else {
                 // Si on ne change pas l'image, on la retire du tableau
@@ -100,7 +115,11 @@ class ProductService
 
         // Supprimer l'image avant de supprimer le produit
         if ($product->image) {
-            Storage::disk('public')->delete($product->image);
+            $imagePath = $product->image;
+            if (!str_starts_with($imagePath, 'images/')) {
+                $imagePath = 'images/' . $imagePath;
+            }
+            Storage::disk('public')->delete($imagePath);
         }
 
         $product->delete();
@@ -126,6 +145,9 @@ class ProductService
      */
     public function deleteImage(string $imagePath): bool
     {
+        if (!str_starts_with($imagePath, 'images/')) {
+            $imagePath = 'images/' . $imagePath;
+        }
         return Storage::disk('public')->delete($imagePath);
     }
 
