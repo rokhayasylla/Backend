@@ -18,7 +18,8 @@ class ProductService
 
         // Ajouter l'URL complète de l'image
         if ($product->image) {
-            $productArray['imageUrl'] = asset('storage/images/' . $product->image);
+            // Utiliser Storage::url() pour obtenir l'URL publique
+            $productArray['imageUrl'] = Storage::disk('public')->url($product->image);
         } else {
             $productArray['imageUrl'] = null;
         }
@@ -39,7 +40,6 @@ class ProductService
     public function index()
     {
         $products = Product::with(['category', 'promotions'])->get();
-        // ✅ Retourner les produits formatés avec imageUrl
         return $this->formatProducts($products);
     }
 
@@ -53,14 +53,12 @@ class ProductService
         }
 
         $product = Product::create($data);
-        // ✅ Retourner le produit formaté avec imageUrl
         return $this->formatProduct($product->load(['category', 'promotions']));
     }
 
     public function show(string $id)
     {
         $product = Product::with(['category', 'promotions', 'packs'])->findOrFail($id);
-        // ✅ Retourner le produit formaté avec imageUrl
         return $this->formatProduct($product);
     }
 
@@ -72,29 +70,27 @@ class ProductService
         if (isset($request['image']) && $request['image'] instanceof UploadedFile) {
             // Supprimer l'ancienne image si elle existe
             if ($product->image) {
-                Storage::disk('images')->delete($product->image);
+                Storage::disk('public')->delete($product->image);
             }
 
             // Stocker la nouvelle image
-            $newImageName = $this->storeImage($request['image']);
-            $request['image'] = $newImageName; // Garder le nom pour la mise à jour
+            $request['image'] = $this->storeImage($request['image']);
         } elseif (isset($request['image'])) {
-            // Si 'image' est présent mais pas un fichier (ex: null pour supprimer)
+            // Si 'image' est présent mais pas un fichier
             if (is_null($request['image']) && $product->image) {
-                Storage::disk('images')->delete($product->image);
+                Storage::disk('public')->delete($product->image);
                 $request['image'] = null;
             } else {
                 // Si on ne change pas l'image, on la retire du tableau
                 unset($request['image']);
             }
         } else {
-            // Pas d'image dans la requête, on ne touche pas à l'image existante
+            // Pas d'image dans la requête
             unset($request['image']);
         }
 
         $product->update($request);
         $updatedProduct = $product->fresh(['category', 'promotions']);
-        // ✅ Retourner le produit formaté avec imageUrl
         return $this->formatProduct($updatedProduct);
     }
 
@@ -102,26 +98,27 @@ class ProductService
     {
         $product = Product::findOrFail($id);
 
-        // ✅ Supprimer l'image avant de supprimer le produit
+        // Supprimer l'image avant de supprimer le produit
         if ($product->image) {
-            Storage::disk('images')->delete($product->image);
+            Storage::disk('public')->delete($product->image);
         }
 
         $product->delete();
     }
 
     /**
-     * Stocker l'image et retourner le chemin
+     * Stocker l'image et retourner le chemin relatif (images/filename.jpg)
      */
     private function storeImage(UploadedFile $file): string
     {
         // Générer un nom unique pour l'image
         $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
-        // Stocker l'image dans le disk 'products'
-        $file->storeAs('', $filename, 'images');
+        // Stocker l'image dans storage/app/public/images/
+        $path = $file->storeAs('images', $filename, 'public');
 
-        return $filename;
+        // Retourner le chemin relatif : images/filename.jpg
+        return $path;
     }
 
     /**
@@ -129,13 +126,12 @@ class ProductService
      */
     public function deleteImage(string $imagePath): bool
     {
-        return Storage::disk('images')->delete($imagePath);
+        return Storage::disk('public')->delete($imagePath);
     }
 
     public function getProductsByCategory(string $categoryId)
     {
         $products = Product::where('category_id', $categoryId)->get();
-        // ✅ Retourner les produits formatés avec imageUrl
         return $this->formatProducts($products);
     }
 
@@ -143,7 +139,6 @@ class ProductService
     {
         $product = Product::findOrFail($productId);
         $product->decrement('stock_quantity', $quantity);
-        // ✅ Retourner le produit formaté avec imageUrl
         return $this->formatProduct($product->fresh());
     }
 }
