@@ -6,6 +6,7 @@ use App\Http\Requests\ProductFormRequest;
 use App\Models\Product;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProductService
 {
@@ -20,7 +21,7 @@ class ProductService
         if ($product->image) {
             // Si l'image ne commence pas par "images/", l'ajouter (pour les anciennes images)
             $imagePath = $product->image;
-            if (!str_starts_with($imagePath, 'images/')) {
+            if (!Str::startsWith($imagePath, 'images/')) {
                 $imagePath = 'images/' . $imagePath;
             }
 
@@ -78,7 +79,7 @@ class ProductService
             if ($product->image) {
                 // Gérer le cas où l'ancienne image n'a pas le préfixe "images/"
                 $oldImagePath = $product->image;
-                if (!str_starts_with($oldImagePath, 'images/')) {
+                if (!Str::startsWith($oldImagePath, 'images/')) {
                     $oldImagePath = 'images/' . $oldImagePath;
                 }
                 Storage::disk('public')->delete($oldImagePath);
@@ -90,7 +91,7 @@ class ProductService
             // Si 'image' est présent mais pas un fichier
             if (is_null($request['image']) && $product->image) {
                 $imagePath = $product->image;
-                if (!str_starts_with($imagePath, 'images/')) {
+                if (!Str::startsWith($imagePath, 'images/')) {
                     $imagePath = 'images/' . $imagePath;
                 }
                 Storage::disk('public')->delete($imagePath);
@@ -116,7 +117,7 @@ class ProductService
         // Supprimer l'image avant de supprimer le produit
         if ($product->image) {
             $imagePath = $product->image;
-            if (!str_starts_with($imagePath, 'images/')) {
+            if (!Str::startsWith($imagePath, 'images/')) {
                 $imagePath = 'images/' . $imagePath;
             }
             Storage::disk('public')->delete($imagePath);
@@ -145,7 +146,7 @@ class ProductService
      */
     public function deleteImage(string $imagePath): bool
     {
-        if (!str_starts_with($imagePath, 'images/')) {
+        if (!Str::startsWith($imagePath, 'images/')) {
             $imagePath = 'images/' . $imagePath;
         }
         return Storage::disk('public')->delete($imagePath);
