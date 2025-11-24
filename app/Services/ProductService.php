@@ -5,37 +5,25 @@ namespace App\Services;
 use App\Http\Requests\ProductFormRequest;
 use App\Models\Product;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class ProductService
 {
     /**
-     * ✅ Méthode helper pour formater un produit avec l'URL complète de l'image
+     * Formater un produit avec l'URL complète de l'image
      */
     private function formatProduct($product)
     {
         $productArray = $product->toArray();
 
-        // Ajouter l'URL complète de l'image
-        if ($product->image) {
-            // Si l'image ne commence pas par "images/", l'ajouter (pour les anciennes images)
-            $imagePath = $product->image;
-            if (!Str::startsWith($imagePath, 'images/')) {
-                $imagePath = 'images/' . $imagePath;
-            }
-
-            // Construire l'URL complète
-            $productArray['imageUrl'] = url('storage/' . $imagePath);
-        } else {
-            $productArray['imageUrl'] = null;
-        }
+        // L'URL est déjà complète dans la BDD avec Cloudinary
+        $productArray['imageUrl'] = $product->image;
 
         return $productArray;
     }
 
     /**
-     * ✅ Formater une collection de produits
+     * Formater une collection de produits
      */
     private function formatProducts($products)
     {
@@ -54,9 +42,9 @@ class ProductService
     {
         $data = $request->validated();
 
-        // Gérer l'upload de l'image
+        // Gérer l'upload de l'image vers Cloudinary
         if ($request->hasFile('image')) {
-            $data['image'] = $this->storeImage($request->file('image'));
+            $data['image'] = $this->uploadToCloudinary($request->file('image'));
         }
 
         $product = Product::create($data);
@@ -75,33 +63,21 @@ class ProductService
 
         // Gérer l'upload de la nouvelle image
         if (isset($request['image']) && $request['image'] instanceof UploadedFile) {
-            // Supprimer l'ancienne image si elle existe
+            // Supprimer l'ancienne image de Cloudinary
             if ($product->image) {
-                // Gérer le cas où l'ancienne image n'a pas le préfixe "images/"
-                $oldImagePath = $product->image;
-                if (!Str::startsWith($oldImagePath, 'images/')) {
-                    $oldImagePath = 'images/' . $oldImagePath;
-                }
-                Storage::disk('public')->delete($oldImagePath);
+                $this->deleteFromCloudinary($product->image);
             }
 
-            // Stocker la nouvelle image
-            $request['image'] = $this->storeImage($request['image']);
+            // Uploader la nouvelle image
+            $request['image'] = $this->uploadToCloudinary($request['image']);
         } elseif (isset($request['image'])) {
-            // Si 'image' est présent mais pas un fichier
             if (is_null($request['image']) && $product->image) {
-                $imagePath = $product->image;
-                if (!Str::startsWith($imagePath, 'images/')) {
-                    $imagePath = 'images/' . $imagePath;
-                }
-                Storage::disk('public')->delete($imagePath);
+                $this->deleteFromCloudinary($product->image);
                 $request['image'] = null;
             } else {
-                // Si on ne change pas l'image, on la retire du tableau
                 unset($request['image']);
             }
         } else {
-            // Pas d'image dans la requête
             unset($request['image']);
         }
 
@@ -114,42 +90,56 @@ class ProductService
     {
         $product = Product::findOrFail($id);
 
-        // Supprimer l'image avant de supprimer le produit
+        // Supprimer l'image de Cloudinary
         if ($product->image) {
-            $imagePath = $product->image;
-            if (!Str::startsWith($imagePath, 'images/')) {
-                $imagePath = 'images/' . $imagePath;
-            }
-            Storage::disk('public')->delete($imagePath);
+            $this->deleteFromCloudinary($product->image);
         }
 
         $product->delete();
     }
 
     /**
-     * Stocker l'image et retourner le chemin relatif (images/filename.jpg)
+     * Upload une image vers Cloudinary et retourner l'URL
      */
-    private function storeImage(UploadedFile $file): string
+    private function uploadToCloudinary(UploadedFile $file): string
     {
-        // Générer un nom unique pour l'image
-        $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        // Upload vers Cloudinary dans le dossier "products"
+        $uploadedFileUrl = Cloudinary::upload($file->getRealPath(), [
+            'folder' => 'products',
+            'resource_type' => 'image'
+        ])->getSecurePath();
 
-        // Stocker l'image dans storage/app/public/images/
-        $path = $file->storeAs('images', $filename, 'public');
-
-        // Retourner le chemin relatif : images/filename.jpg
-        return $path;
+        return $uploadedFileUrl;
     }
 
     /**
-     * Supprimer une image
+     * Supprimer une image de Cloudinary
      */
-    public function deleteImage(string $imagePath): bool
+    private function deleteFromCloudinary(string $imageUrl): void
     {
-        if (!Str::startsWith($imagePath, 'images/')) {
-            $imagePath = 'images/' . $imagePath;
+        // Extraire le public_id de l'URL Cloudinary
+        // Ex: https://res.cloudinary.com/demo/image/upload/v1234567890/products/abc123.jpg
+        // Public ID = products/abc123
+
+        if (strpos($imageUrl, 'cloudinary.com') !== false) {
+            $parts = explode('/', $imageUrl);
+            $uploadIndex = array_search('upload', $parts);
+
+            if ($uploadIndex !== false && isset($parts[$uploadIndex + 2])) {
+                // Récupérer la partie après /upload/v123456/
+                $pathParts = array_slice($parts, $uploadIndex + 2);
+                $filename = end($pathParts);
+                $filenameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+
+                // Construire le public_id
+                array_pop($pathParts);
+                $pathParts[] = $filenameWithoutExt;
+                $publicId = implode('/', $pathParts);
+
+                // Supprimer de Cloudinary
+                Cloudinary::destroy($publicId);
+            }
         }
-        return Storage::disk('public')->delete($imagePath);
     }
 
     public function getProductsByCategory(string $categoryId)
