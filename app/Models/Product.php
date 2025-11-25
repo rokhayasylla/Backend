@@ -13,7 +13,7 @@ class Product extends Model
     protected $casts = [
         'price' => 'decimal:2',
     ];
-
+    protected $appends = ['imageUrl'];
     public function category()
     {
         return $this->belongsTo(Category::class);
