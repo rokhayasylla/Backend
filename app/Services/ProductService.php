@@ -10,13 +10,13 @@ use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 class ProductService
 {
     /**
-     * Formater un produit avec l'URL complète de l'image
+     * Formater un produit - L'URL Cloudinary est déjà complète dans la BDD
      */
     private function formatProduct($product)
     {
         $productArray = $product->toArray();
 
-        // L'URL est déjà complète dans la BDD avec Cloudinary
+        // L'URL Cloudinary est déjà complète, on l'assigne à imageUrl
         $productArray['imageUrl'] = $product->image;
 
         return $productArray;
@@ -99,11 +99,10 @@ class ProductService
     }
 
     /**
-     * Upload une image vers Cloudinary et retourner l'URL
+     * Upload une image vers Cloudinary et retourner l'URL complète
      */
     private function uploadToCloudinary(UploadedFile $file): string
     {
-        // Upload vers Cloudinary dans le dossier "products"
         $uploadedFileUrl = Cloudinary::upload($file->getRealPath(), [
             'folder' => 'products',
             'resource_type' => 'image'
@@ -117,26 +116,19 @@ class ProductService
      */
     private function deleteFromCloudinary(string $imageUrl): void
     {
-        // Extraire le public_id de l'URL Cloudinary
-        // Ex: https://res.cloudinary.com/demo/image/upload/v1234567890/products/abc123.jpg
-        // Public ID = products/abc123
-
         if (strpos($imageUrl, 'cloudinary.com') !== false) {
             $parts = explode('/', $imageUrl);
             $uploadIndex = array_search('upload', $parts);
 
             if ($uploadIndex !== false && isset($parts[$uploadIndex + 2])) {
-                // Récupérer la partie après /upload/v123456/
                 $pathParts = array_slice($parts, $uploadIndex + 2);
                 $filename = end($pathParts);
                 $filenameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
 
-                // Construire le public_id
                 array_pop($pathParts);
                 $pathParts[] = $filenameWithoutExt;
                 $publicId = implode('/', $pathParts);
 
-                // Supprimer de Cloudinary
                 Cloudinary::destroy($publicId);
             }
         }
