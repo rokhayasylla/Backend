@@ -19,7 +19,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:4200','https://memoire-frontend-nu.vercel.app'],
+    'allowed_origins' => [
+        'http://localhost:4200',
+        'http://localhost:52271',
+        'https://memoire-frontend-nu.vercel.app'],
 
     'allowed_origins_patterns' => [],
 
